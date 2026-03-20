@@ -2,8 +2,8 @@ const mineflayer = require('mineflayer')
 const { Vec3 } = require('vec3')
 
 const bot = mineflayer.createBot({
-  host: '82.64.200.38',
-  port: 30020,
+  host: 'localhost',
+  port: 37659,
   username: 'Ilyas_bot'
 })
 
