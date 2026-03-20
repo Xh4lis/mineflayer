@@ -9,51 +9,68 @@ const bot = mineflayer.createBot({
   // password: '12345678'      // set if you want to use password-based auth (may be unreliable). If specified, the `username` must be an email
 })
 
-function goForWood () {
-    // Cherche tous les blocs d'un certain type dans les chunks chargés
-    const blocsTrouves = bot.findBlocks({
-    matching: block => block.name.includes('log'), // Ce qu'on cherche
-    maxDistance: 64,  // Rayon de recherche (64 blocs autour du bot)
-    });
 
-    console.log(`J'ai trouvé ${blocsTrouves.length} de bois !`);
-    console.log(`${blocsTrouves}`);
-    // blocsTrouves est un tableau contenant les coordonnées [Vec3] de chaque bloc
+function goForWood() {
+  let nbBlocks = 32;
+  let blocsTrouves = bot.findBlocks({
+    matching: block => block.name.includes('log'),
+    maxDistance: nbBlocks,
+  });
+
+  // On agrandit la recherche tant qu'on a moins de 10 blocs
+  while (blocsTrouves.length < 10 && nbBlocks <= 128) { // limite pour éviter boucle infinie
+    nbBlocks *= 2;
+    blocsTrouves = bot.findBlocks({
+      matching: block => block.name.includes('log'),
+      maxDistance: nbBlocks,
+    });
+  }
+
+  console.log(`J'ai trouvé ${blocsTrouves.length} blocs de bois !`);
+  console.log(blocsTrouves);
 }
 
-function goForWood2 () {
-    console.log("Recherche absolue en cours...");
-    const maPosition = bot.entity.position;
+const { Movements, goals } = require('mineflayer-pathfinder');
 
-    // 1. On récupère un grand nombre de blocs (pour être sûr de couvrir toutes les directions)
-    const blocsTrouves = bot.findBlocks({
-        matching: bot.registry.blocksByName.oak_log.id,
-        maxDistance: 64,
-        count: 200 // On force l'algo à chercher loin et partout
+// Recherche efficace des arbres les plus proches
+// findBlocks parcourt les chanks chargés autour du bot, mais l'ordre dans
+// lequel il les examine privilégie les directions positives par rapport au bot
+// Les blocks à sa gauche se retrouvent donc au début du tableau blocsTrouves et
+// donc les arbres les plus proches ne sont pas choisis.
+// Pour résoudre ça, on tri tous les blocks trouvés par distance au bot une fois 
+// qu'il a trouvé les blocks les plus proches.
+
+function goForWood2(minBlocks = 10) {
+  console.log("Recherche absolue en cours...");
+  const maPosition = bot.entity.position;
+  let nbBlocks = 32;
+  let blocsTrouves = [];
+
+  while (blocsTrouves.length < minBlocks && nbBlocks <= 528) {
+    blocsTrouves = bot.findBlocks({
+      matching: bot.registry.blocksByName.oak_log.id,
+      maxDistance: nbBlocks,
+      count: minBlocks
     });
 
-    if (blocsTrouves.length > 0) {
-        
-        blocsTrouves.sort((a, b) => {
-            return maPosition.distanceTo(a) - maPosition.distanceTo(b);
-        });
-
-        const cible = blocsTrouves[0]; 
-        
-        // On calcule la distance pour vérifier que ça marche
-        const distance = Math.round(maPosition.distanceTo(cible));
-        console.log(`Arbre le plus proche trouvé à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
-
-        const defaultMove = new Movements(bot);
-        bot.pathfinder.setMovements(defaultMove);
-
-        // cible est un Vec3, on peut utiliser directement ses coordonnées
-        const objectif = new goals.GoalNear(cible.x, cible.y, cible.z, 1);
-        bot.pathfinder.setGoal(objectif);
-        
-    } else {
-        console.log("Aucun bois trouvé dans un rayon de 64 blocs.");
+    if (blocsTrouves.length < minBlocks) {
+      nbBlocks *= 2; 
     }
+  }
+
+  if (blocsTrouves.length > 0) {
+    blocsTrouves.sort((a, b) => maPosition.distanceTo(a) - maPosition.distanceTo(b));
+    const cible = blocsTrouves[0]; 
+    const distance = Math.round(maPosition.distanceTo(cible));
+    console.log(`Arbre le plus proche trouvé à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
+
+    const defaultMove = new Movements(bot);
+    bot.pathfinder.setMovements(defaultMove);
+    const objectif = new goals.GoalNear(cible.x, cible.y, cible.z, 1);
+    bot.pathfinder.setGoal(objectif);
+  } else {
+    console.log(`Aucun bois trouvé dans un rayon de ${nbBlocks} blocs.`);
+  }
 }
 
 
@@ -70,12 +87,3 @@ bot.on('spawn', () => {
   // On ne lance pas la recherche immédiatement, on attend un peu que les chunks chargent
   setTimeout(() => goForWood2(), 2000); 
 });
-/*
-bot.on('error', (err) => {
-    console.log("Aïe, petite erreur :", err.message);
-});
-
-bot.on('kicked', (reason) => {
-    console.log("Le bot a été expulsé :", reason);
-});
-*/
