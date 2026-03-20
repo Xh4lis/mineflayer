@@ -9,29 +9,6 @@ const bot = mineflayer.createBot({
   // password: '12345678'      // set if you want to use password-based auth (may be unreliable). If specified, the `username` must be an email
 })
 
-
-function goForWood() {
-  let nbBlocks = 32;
-  let blocsTrouves = bot.findBlocks({
-    matching: block => block.name.includes('log'),
-    maxDistance: nbBlocks,
-  });
-
-  // On agrandit la recherche tant qu'on a moins de 10 blocs
-  while (blocsTrouves.length < 10 && nbBlocks <= 128) { // limite pour éviter boucle infinie
-    nbBlocks *= 2;
-    blocsTrouves = bot.findBlocks({
-      matching: block => block.name.includes('log'),
-      maxDistance: nbBlocks,
-    });
-  }
-
-  console.log(`J'ai trouvé ${blocsTrouves.length} blocs de bois !`);
-  console.log(blocsTrouves);
-}
-
-const { Movements, goals } = require('mineflayer-pathfinder');
-
 // Recherche efficace des arbres les plus proches
 // findBlocks parcourt les chanks chargés autour du bot, mais l'ordre dans
 // lequel il les examine privilégie les directions positives par rapport au bot
@@ -39,31 +16,36 @@ const { Movements, goals } = require('mineflayer-pathfinder');
 // donc les arbres les plus proches ne sont pas choisis.
 // Pour résoudre ça, on tri tous les blocks trouvés par distance au bot une fois 
 // qu'il a trouvé les blocks les plus proches.
+console.log(`Let's go !`);
 
 function goForWood2(minBlocks = 10) {
-  console.log("Recherche absolue en cours...");
+  console.log("Recherche de bois en cours...");
   const maPosition = bot.entity.position;
   let nbBlocks = 32;
   let blocsTrouves = [];
 
-  while (blocsTrouves.length < minBlocks && nbBlocks <= 528) {
+  // On agrandit le rayon progressivement jusqu'à trouver au moins minBlocks
+  while (blocsTrouves.length < minBlocks && nbBlocks <= 256) { // limite 256 pour éviter freeze
+    console.log(`Recherche dans un rayon de ${nbBlocks} blocs`);
     blocsTrouves = bot.findBlocks({
-      matching: bot.registry.blocksByName.oak_log.id,
+      matching: block => block.name.includes('log'), // tous les logs
       maxDistance: nbBlocks,
       count: minBlocks
     });
 
     if (blocsTrouves.length < minBlocks) {
-      nbBlocks *= 2; 
+      nbBlocks *= 2; // double le rayon si pas assez de blocs trouvés
     }
   }
 
   if (blocsTrouves.length > 0) {
+    // Tri les blocs par distance pour éviter le biais vers les coordonnées positives
     blocsTrouves.sort((a, b) => maPosition.distanceTo(a) - maPosition.distanceTo(b));
     const cible = blocsTrouves[0]; 
     const distance = Math.round(maPosition.distanceTo(cible));
     console.log(`Arbre le plus proche trouvé à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
 
+    // Déplacement vers le bloc le plus proche
     const defaultMove = new Movements(bot);
     bot.pathfinder.setMovements(defaultMove);
     const objectif = new goals.GoalNear(cible.x, cible.y, cible.z, 1);
