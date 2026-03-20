@@ -73,23 +73,23 @@ def camera (dx, dy):
 
 
 #test 
-"""
+
 try:
     # Avance pendant 2 secondes
     avancer(2)
     
     # Tourne la tête à droite (le chiffre dépend de la sensibilité de ton jeu, il faudra tester !)
-    tourner_camera(500, 0) 
+    camera(500, 0) 
     time.sleep(1)
     
     # Saute et pose un bloc sous ses pieds
-    sauter()
-    poser_bloc()
+    sauter(0.1)
+    right_click(0.1)
     time.sleep(1)
     
     # Regarde vers le bas et mine pendant 3 secondes
-    tourner_camera(0, 500)
-    attaquer_ou_miner(3)
+    camera(0, 500)
+    left_click(3)
     
     print("✅ Séquence terminée.")
 
@@ -99,4 +99,3 @@ except KeyboardInterrupt:
     clavier.release('w')
     clavier.release(Key.shift)
     souris.release(Button.left)
-"""
