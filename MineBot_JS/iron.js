@@ -9,7 +9,7 @@ const bot = mineflayer.createBot({
 
 bot.once('spawn', () => {
   console.log('Le bot est là')
-  scanIron()
+  findIron()
 })
 
 function findIron() {
@@ -22,13 +22,12 @@ function findIron() {
     const ironBlocks = bot.findBlocks({
       matching: block => block.name === 'iron_ore',
       maxDistance: 500,
-      count: 3
+      count: 200
     })
 
     if (ironBlocks.length > 0) {
       clearInterval(interval)
       console.log( ironBlocks)
-      bot.chat(ironBlocks)
     }
   }, 100)
 }
