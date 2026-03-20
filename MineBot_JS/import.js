@@ -34,19 +34,16 @@ function goForWood2 () {
 
     if (blocsTrouves.length > 0) {
         
-        // 2. LA MAGIE EST ICI : On trie le tableau du plus proche au plus éloigné
         blocsTrouves.sort((a, b) => {
             return maPosition.distanceTo(a) - maPosition.distanceTo(b);
         });
 
-        // 3. On prend le premier élément du tableau trié (le vrai plus proche !)
         const cible = blocsTrouves[0]; 
         
         // On calcule la distance pour vérifier que ça marche
         const distance = Math.round(maPosition.distanceTo(cible));
-        console.log(`🌳 Arbre le plus proche trouvé à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
+        console.log(`Arbre le plus proche trouvé à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
 
-        // 4. On lance le Pathfinder vers cette cible absolue
         const defaultMove = new Movements(bot);
         bot.pathfinder.setMovements(defaultMove);
 
@@ -58,6 +55,10 @@ function goForWood2 () {
         console.log("Aucun bois trouvé dans un rayon de 64 blocs.");
     }
 }
+
+
+const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+bot.loadPlugin(pathfinder);
 
 const { mineflayer: mineflayerViewer } = require('prismarine-viewer')
 bot.once('spawn', () => {
