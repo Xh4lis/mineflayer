@@ -16,6 +16,7 @@ const bot = mineflayer.createBot({
 // donc les arbres les plus proches ne sont pas choisis.
 // Pour résoudre ça, on tri tous les blocks trouvés par distance au bot une fois 
 // qu'il a trouvé les blocks les plus proches.
+
 console.log(`Let's go !`);
 
 function goForWood2(minBlocks = 10) {
