@@ -94,6 +94,7 @@ class Controller {
         await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
         await this.marcherVers(cible);
     }
+    // TODO : (optionnel) faire une fonction qui place les blocs mais il faudra enlever dans les autres fonctions qui le font
 
     async tower(cible) {
         // TODO : S'assurer que le bot a équipé un bloc (dirt, cobble...) dans sa main !
@@ -121,6 +122,58 @@ class Controller {
         await this.breakBlocks(blocsACasser);
         await this.tower(cible);
     }
+
+    async equiperBloc() {
+        // Liste de nos blocs préférés pour construire
+        const blocsDeConstruction = ['dirt', 'cobblestone', 'stone', 'netherrack'];
+
+        // On fouille l'inventaire pour trouver l'un de ces blocs
+        const bloc = this.bot.inventory.items().find(item => blocsDeConstruction.includes(item.name));
+
+        if (bloc) {
+            try {
+                await this.bot.equip(bloc, 'hand');
+            } catch (err) {
+                console.log(`Impossible d'équiper ${bloc.name}`);
+            }
+        } else {
+            console.log("Aïe ! Je n'ai plus de blocs de construction dans mon inventaire !");
+        }
+    }
+    // TODO : améliorer la fonction pour qu'elle choisisse le meilleur outil en fonction du bloc à miner (ex: pelle pour la terre, pioche pour la pierre, hache pour le bois...)
+    async equiperMeilleurOutil(blockToDig) {
+        let meilleurOutil = null;
+        // on calcule le temps de minage avec la main vide (type = null)
+        // Les 3 "false" correspondent à : mode créatif, sous l'eau, et en l'air (on part du principe qu'on est sur terre)
+        let tempsMinimum = blockToDig.digTime(null, false, false, false);
+
+        // on teste virtuellement tous les objets de l'inventaire
+        for (const item of this.bot.inventory.items()) {
+            // L'API calcule le temps que ça prendrait avec cet objet
+            const tempsAvecOutil = blockToDig.digTime(item.type, false, false, false);
+            if (tempsAvecOutil < tempsMinimum) {
+                tempsMinimum = tempsAvecOutil;
+                meilleurOutil = item;
+            }
+        }
+
+        // si on a trouvé un outil qui va plus vite que nos mains, on l'équipe
+        if (meilleurOutil) {
+            try {
+                await this.bot.equip(meilleurOutil, 'hand');
+            } catch (err) {
+                console.log(`Erreur lors de l'équipement de ${meilleurOutil.name} :`, err.message);
+            }
+        } else {
+            // sinon, on déséquipe ce qu'on a en main pour miner à mains nues
+            try {
+                await this.bot.unequip('hand');
+            } catch (err) {}
+        }
+    }
+
+    // TODO : fonction pour bridge
+    // TODO : fonction pour faire du parkour (sauter de bloc en bloc)
 }
 
 module.exports = Controller;
