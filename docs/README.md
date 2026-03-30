@@ -11,6 +11,9 @@
 - ✅ une fonction ```getVoisins()``` qui renvoie la liste ordonnée des déplacements possibles (et dire quel déplacement est nécessaire) + donner un coût à chaque voisin (1 pour le sol, 1.5 pour le saut, 1.2 pour creuser sous soi ...)
 - ✅ faire le A* qui renvoie la liste des déplacements
 - ✅ faire un programme qui exécute le A* et genre tous les x actions le recalcule
+- Régler les problèmes de déplacement (ex : il continue d'avancer même si la tache est inatégnable et s'il se trompe)
+- Recalcule toutes les x secondes après avoir trouvé un chemin
+- Implémenter le Heap pour le AStar.
 
 ## Infos complémentaires
 - Hauteurs max : -64 | 319

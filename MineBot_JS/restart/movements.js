@@ -1,5 +1,5 @@
-const casserBloc = 1;
-const deplacement = 1;
+const casserBloc = 2;
+const deplacement = 0.5;
 const poserBloc = 1;
 class Movements {
     constructor(watch) {
@@ -8,6 +8,8 @@ class Movements {
 
     // Renvoie toutes les cases accessibles depuis un "node" (nœud)
     getNeighbors(node) {
+        console.log("getNeighbors");    
+
         const neighbors = [];
         
         // Nord
@@ -149,8 +151,6 @@ class Movements {
             }
         }
         
-        // (optionnel) : Ajouter la logique pour les sauts et les chutes
-
         if (this.watch.canTowerUp(node.x, node.y, node.z)) {
             // Coût modéré : sauter et poser un bloc ça demande un petit effort
             neighbors.push({ x: node.x, y: node.y + 1, z: node.z, cost: deplacement + poserBloc, action: 'tower' });
@@ -190,7 +190,7 @@ class Movements {
             // Coût élevé : il faut miner, puis sauter, puis poser le bloc
             neighbors.push({ 
                 x: node.x, y: node.y + 1, z: node.z, 
-                cost: deplacement + casserBloc + poserBloc, // 1 pour casser + 2 pour sauter/poser + 1 de pénalité pour la complexité 
+                cost: deplacement + poserBloc, // 1 pour casser + 2 pour sauter/poser + 1 de pénalité pour la complexité 
                 action: 'break_and_tower',
                 toBreak: [{ x: node.x, y: node.y + 2, z: node.z }] // On dit au contrôleur de casser le plafond !
             });

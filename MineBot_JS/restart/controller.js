@@ -82,6 +82,7 @@ class Controller {
         }
     }
     async breakBlocks(blocsACasser) {
+        this.equiperMeilleurOutil(this.bot.blockAt(new Vec3(blocsACasser[0].x, blocsACasser[0].y, blocsACasser[0].z))); // On équipe le meilleur outil pour le premier bloc à casser (s'il y en a un)
         for (const bloc of blocsACasser) {
             const blockToDig = this.bot.blockAt(new Vec3(bloc.x, bloc.y, bloc.z));
             await this.bot.lookAt(blockToDig.position.offset(0.5, 0, 0.5));
@@ -104,9 +105,9 @@ class Controller {
         const faceHaut = new Vec3(0, 1, 0);
         // on regarde vers le bas pour pouvoir poser le bloc
         await this.bot.lookAt(positionActuelle.offset(0, -2, 0), true);
-
+        await this.equiperBloc(); // On équipe un bloc de construction avant de faire le tower
         this.bot.setControlState('jump', true);
-        await this.wait(100);
+        await this.wait(300);
 
         try {
             await this.bot.placeBlock(blocSousPieds, faceHaut);

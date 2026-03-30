@@ -1,10 +1,11 @@
+const { Vec3 } = require('vec3');
 class Watch {
     constructor(bot) {
         this.bot = bot; // On stocke le bot pour pouvoir utiliser ses yeux
     }
 
     getBlock(x, y, z) {
-        return this.bot.blockAt({x, y, z});
+        return this.bot.blockAt(new Vec3(x, y, z));
     }
 
     // Détermine si le bot peut se tenir sur cette case précise
