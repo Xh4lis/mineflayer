@@ -123,6 +123,11 @@ class Controller {
         await this.breakBlocks(blocsACasser);
         await this.tower(cible);
     }
+    async digDown(cible, blocSousPieds) {
+        await this.breakBlocks([{ x: blocSousPieds.x, y: blocSousPieds.y, z: blocSousPieds.z }]);
+        await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
+        await this.marcherVers(cible);
+    }
 
     async equiperBloc() {
         // Liste de nos blocs préférés pour construire
