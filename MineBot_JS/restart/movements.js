@@ -1,5 +1,5 @@
 const casserBloc = 2;
-const deplacement = 0.5;
+const deplacement = 1;
 const poserBloc = 1;
 class Movements {
     constructor(watch) {
@@ -11,13 +11,13 @@ class Movements {
 
     IW(x,y,z){ // Is Walkable
         if (this.watch.isWalkable(x, y, z)) {
-            this.neighbors.push({x: x, y: y, z: z, cost: deplacement});
+            this.neighbors.push({x: x, y: y, z: z, cost: deplacement, action: "walk"});
             return true;
         }
         return false;
     }
     IB(x,y,z){ // Is Breakable
-        if (this.watch.isBreakable(x, y, z-1)){
+        if (this.watch.isBreakable(x, y, z)){
             // On analyse ce qu'il faut casser exactement
             const blocsACasser = [];
             const pieds = this.watch.getBlock(x, y, z);
@@ -55,7 +55,7 @@ class Movements {
         return false;
     }
     IJF(x,y,z){ // Is Jumpable Forward (pas francais aussi mais bon hein qui va me critiquer ?)
-        if (this.watch.isWalkable(x, y+1, z)) { // La case d'arrivée en hauteur est libre
+        if (this.watch.isWalkable(x, y, z)) { // La case d'arrivée en hauteur est libre
             this.neighbors.push({ 
                 x: x, y: y+1, z: z, 
                 cost: deplacement + 0.5, // Un saut coûte un peu plus d'énergie que marcher
@@ -101,10 +101,12 @@ class Movements {
             if (this.IJF(node.x+1, node.y + 1, node.z));
             // Ouest
             if (this.IJF(node.x-1, node.y + 1, node.z));
-        } else if (this.watch.canBreakAndTowerUp(node.x, node.y, node.z)) {
+        }
+        else if (this.watch.canBreakAndTowerUp(node.x, node.y, node.z)) {
             // Coût élevé : il faut miner, puis sauter, puis poser le bloc
             this.neighbors.push({ x: node.x, y: node.y + 1, z: node.z, cost: deplacement + poserBloc, action: 'break_and_tower', toBreak: [{ x: node.x, y: node.y + 2, z: node.z }]});
-        } else if (this.watch.canDigDown(node.x, node.y, node.z)) {
+        }
+        if (this.watch.canDigDown(node.x, node.y, node.z)) {
             // Coût élevé : il faut miner le bloc sous nos pieds, tomber, puis éventuellement se relever
             this.neighbors.push({x: node.x, y: node.y - 1, z: node.z, cost: casserBloc, action: 'dig_down', toBreak: [{ x: node.x, y: node.y - 1, z: node.z }]});
         }

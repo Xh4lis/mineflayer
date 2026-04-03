@@ -9,19 +9,25 @@ class Controller {
     wait(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    async executePath(path) {
+   async executePath(path) {
         if (!path || path.length === 0) return false;
+
+        const depart = new Vec3(path[0].x, path[0].y, path[0].z);
+        console.log("Centrage sur le bloc de départ");
+        await this.bot.lookAt(depart.offset(0.5, 0, 0.5));
+        await this.marcherVers(depart);
 
         // (index 0) la case où le bot se trouve déjà
         for (let i = 1; i < path.length; i++) {
             const etape = path[i];
             const cible = new Vec3(etape.x, etape.y, etape.z);
 
-            // on vise les pieds du bloc cible + offset pour centrer
             await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
             let succes = false;
-            // on exécute l'action demandée
+            
+            // Un petit log pour savoir ce que le cerveau a décidé :
+            console.log(`- Action demandée : ${etape.action} vers X:${etape.x} Y:${etape.y} Z:${etape.z}`);
+
             if (etape.action === 'walk' || etape.action === 'drop') {
                 succes = await this.marcherVers(cible);
             } 
@@ -37,18 +43,22 @@ class Controller {
             else if (etape.action === 'break_and_tower') {
                 succes = await this.breakTower(cible, etape.toBreak);
             }
+            else if (etape.action === 'dig_down') {
+                succes = await this.digDown(cible, etape.toBreak[0]); 
+            }
+            else {
+                console.log(`Action INCONNUE : ${etape.action}`); // action oubliée dans movements.js
+            }
+
             if (!succes) {
                 console.log("Je suis bloqué ! J'abandonne ce chemin.");
-                break; // On casse la boucle for de l'executePath
-            }   
-            
-            // On fait une micro-pause pour éviter que le bot ne glisse ou n'aille trop vite
-            await this.wait(100); 
+                this.bot.clearControlStates();
+                return false; 
+            }      
+            await this.wait(50); 
         }
-
-        // Quand la boucle est finie, on lâche toutes les touches
         this.bot.clearControlStates();
-        return true;
+        return true; // <-- C'est une réussite !
     }
 
 
@@ -115,7 +125,7 @@ class Controller {
         return await this.marcherVers(cible);
     }
     // TODO : (optionnel) faire une fonction qui place les blocs mais il faudra enlever dans les autres fonctions qui le font
-
+    /*
     async tower(cible) {
         const positionActuelle = this.bot.entity.position;
         const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
@@ -125,8 +135,7 @@ class Controller {
         await this.bot.lookAt(positionActuelle.offset(0, -2, 0), true);
         await this.equiperBloc(); // On équipe un bloc de construction avant de faire le tower
         this.bot.setControlState('jump', true);
-        await this.wait(300);
-
+        await this.wait(150);
         try {
             await this.bot.placeBlock(blocSousPieds, faceHaut);
         } catch (err) {
@@ -136,7 +145,28 @@ class Controller {
             return false;
         }
         this.bot.setControlState('jump', false);
+        await this.wait(300);
+        return true;
+    }*/
+    async tower(cible) {
+        const positionActuelle = this.bot.entity.position;
+        const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
+        const faceHaut = new Vec3(0, 1, 0);
+        this.bot.clearControlStates();
+        await this.equiperBloc(); 
+        // yaw = direction du regard (on garde le même), pitch = angle vertical (-Math.PI/2 = regarder ses pieds)
+        await this.bot.look(this.bot.entity.yaw, -Math.PI / 2, true);
+        this.bot.setControlState('jump', true);
         await this.wait(150);
+        try {
+            await this.bot.placeBlock(blocSousPieds, faceHaut);
+        } catch (err) {
+            console.log("Impossible de faire le tower (timing raté) :", err.message);
+            this.bot.setControlState('jump', false);
+            return false;
+        }
+        this.bot.setControlState('jump', false);
+        await this.wait(200); 
         return true;
     }
 

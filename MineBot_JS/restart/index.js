@@ -13,97 +13,16 @@ const bot = mineflayer.createBot({
   // password: '12345678'      // set if you want to use password-based auth (may be unreliable). If specified, the `username` must be an email
 })
 
-
-function goForWood() {
-  let nbBlocks = 32;
-  let blocsTrouves = bot.findBlocks({
-    matching: block => block.name.includes('log'),
-    maxDistance: nbBlocks,
-  });
-
-  // On agrandit la recherche tant qu'on a moins de 10 blocs
-  while (blocsTrouves.length < 10 && nbBlocks <= 128) { // limite pour éviter boucle infinie
-    nbBlocks *= 2;
-    blocsTrouves = bot.findBlocks({
-      matching: block => block.name.includes('log'),
-      maxDistance: nbBlocks,
-    });
-  }
-
-  console.log(`J'ai trouvé ${blocsTrouves.length} blocs de bois !`);
-  console.log(blocsTrouves);
-}
-
-async function goForWood2(minBlocks=10 , tentative=1) {
-  const maPosition = bot.entity.position;
-  let nbBlocks = 256;
-  let blocsTrouves = [];
-  //si on a pas fait les tentatives
-  if (blocsTrouves.length < minBlocks && tentative <= 10) {
-    //cherche
-    console.log("recherche "+tentative+": "+"nbBlocks = "+nbBlocks);
-    const logIds = bot.registry.blocksArray
-      .filter(block => block.name.includes('diamond'))
-      .map(block => block.id);
-    blocsTrouves = bot.findBlocks({
-      matching: logIds,
-      maxDistance: nbBlocks,
-      count: minBlocks
-    });
-    //si trouve
-    if (blocsTrouves.length >= minBlocks) {
-      //on y va
-      blocsTrouves.sort((a, b) => maPosition.distanceTo(a) - maPosition.distanceTo(b));
-      const cible = blocsTrouves[0]; 
-      const distance = Math.round(maPosition.distanceTo(cible));
-      console.log(`Arbre le plus proche trouvé à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
-
-      const defaultMove = new Movements(bot);
-      bot.pathfinder.setMovements(defaultMove);
-      const objectif = new goals.GoalNear(cible.x, cible.y, cible.z, 1);
-      bot.pathfinder.setGoal(objectif);
-    } 
-    //si on trouve pas (on avance si tentative !=10)
-    else if (blocsTrouves.length < minBlocks && tentative !=10) {
-      console.log("Pas assez de bois ici, j'avance de 256 blocs");    
-      let xActuel = Math.round(maPosition.x); // On stocke le X de départ
-      // La boucle for de 4 étapes
-      for(let i = 0; i < 4; i++){
-        xActuel += 64; // On ajoute 64 à chaque tour de boucle ! (64, 128, 192, 256)
-        const defaultMove = new Movements(bot);
-        bot.pathfinder.setMovements(defaultMove);
-        console.log(`Étape ${i+1}/4 : Je marche vers X:${xActuel}...`);
-        try {
-          await bot.pathfinder.goto(new goals.GoalXZ(xActuel, Math.round(maPosition.z)));
-          console.log(`${(i+1)*64} blocs parcourus !`);
-        } 
-        catch (err) {
-          console.log("Impossible d'atteindre ce point (mur, océan...). Je m'arrête là pour ce voyage.");
-          break; // On casse la boucle for si on est bloqué par une falaise
-        }
-      }
-      setTimeout(() => goForWood2(minBlocks, tentative + 1), 500);
-    }
-  }
-  else if (tentative>10){
-    console.log(`Aucun bois trouvé dans les 10 tentatives`);  
-    console.log("Fini !");
-  }
-}
-
 async function goForWood(minBlocks = 10, tentative = 1, astar, controller) {
   const maPosition = bot.entity.position;
   let nbBlocks = 256;
   let blocsTrouves = [];
-
   if (tentative <= 10) {
     console.log("Recherche " + tentative + ": nbBlocks = " + nbBlocks);
-    
-    // (J'ai laissé diamond comme dans ton code !)
+    // On cherche des diamants
     const targetIds = bot.registry.blocksArray
       .filter(block => block.name.includes('diamond'))
-      .map(block => block.id);
-      
+      .map(block => block.id);      
     blocsTrouves = bot.findBlocks({
       matching: targetIds,
       maxDistance: nbBlocks,
@@ -114,54 +33,140 @@ async function goForWood(minBlocks = 10, tentative = 1, astar, controller) {
     if (blocsTrouves.length >= minBlocks) {
       blocsTrouves.sort((a, b) => maPosition.distanceTo(a) - maPosition.distanceTo(b));
       const cible = blocsTrouves[0]; 
-      const distance = Math.round(maPosition.distanceTo(cible));
+      const distance = Math.floor(maPosition.distanceTo(cible));
       console.log(`Cible la plus proche trouvée à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
-
       console.log("Calcul du chemin avec l'IA");
       const path = astar.findPath(
-          Math.round(maPosition.x), Math.round(maPosition.y), Math.round(maPosition.z),
+          Math.floor(maPosition.x), Math.floor(maPosition.y), Math.floor(maPosition.z),
           cible.x, cible.y, cible.z
       );
-
       if (path) {
-          console.log("Chemin trouvé !");
-          await controller.executePath(path);
-          console.log("Arrivé à destination !");
+          console.log("Chemin trouvé !");  
+          const estArrive = await controller.executePath(path);          
+          if (estArrive) {
+              console.log("Arrivé à destination !");
+              // TODO : lui dire de casser la cible (il le fait déjà)
+              // await controller.breakBlocks([cible]);
+          } else {
+              console.log("Bloqué en route, New A*");
+              setTimeout(() => goForWood(minBlocks, tentative, astar, controller), 1000);
+          }          
       } else {
           console.log("L'IA ne trouve aucun chemin sûr pour y aller.");
           setTimeout(() => goForWood(minBlocks, tentative + 1, astar, controller), 500);
       }
     } 
-    
     // --- 2. SI ON NE TROUVE PAS (EXPLORATION) ---
     else {
       console.log("Pas assez de blocs ici, j'avance de 256 blocs pour explorer.");    
       
-      let targetX = Math.round(maPosition.x);
-      const targetY = Math.round(maPosition.y); // On garde la même hauteur pour chercher
-      const targetZ = Math.round(maPosition.z); 
-
-      // La boucle for de 4 étapes
+      let targetX = Math.floor(maPosition.x);
+      const targetY = Math.floor(maPosition.y); 
+      const targetZ = Math.floor(maPosition.z); 
       for (let i = 0; i < 4; i++) {
         targetX += 64; 
-        console.log(`➡️ Étape ${i+1}/4 : Je marche vers X:${targetX}...`);
-        
-        // On demande à l'IA de nous emmener 64 blocs plus loin
+        console.log(`Étape ${i+1}/4 : Je marche vers X:${targetX}...`);
+        const posActuelle = bot.entity.position;
         const path = astar.findPath(
-            Math.round(bot.entity.position.x), Math.round(bot.entity.position.y), Math.round(bot.entity.position.z),
-            targetX, targetY, targetZ
+          Math.floor(posActuelle.x), Math.floor(posActuelle.y), Math.floor(posActuelle.z), //Math.floor super important
+          targetX, targetY, targetZ
         );
-
         if (path) {
-            await controller.executePath(path);
-            console.log(`${(i+1)*64} blocs parcourus !`);
+            const reussite = await controller.executePath(path);
+            if (reussite) {
+                console.log(`${(i+1)*64} blocs parcourus !`);
+            } else {
+                console.log("Bloqué pendant l'exploration ! Je m'arrête là pour ce voyage.");
+                break; // Si on se bloque en explorant, on casse la boucle et on relance une recherche depuis la nouvelle position
+            }
         } 
         else {
             console.log("Impossible d'aller plus loin (mur ou zone non chargée). Je m'arrête là.");
-            break; // On casse la boucle for si on est bloqué
+            break; 
         }
       }
+      // On relance la recherche après l'exploration
+      setTimeout(() => goForWood(minBlocks, tentative + 1, astar, controller), 500);
+    }
+  }
+  else {
+    console.log(`Aucun bloc trouvé dans les 10 tentatives.`);  
+    console.log("Fini !");
+  }
+}
+
+async function chercherBloc(nomDuBloc, minBlocks = 1, tentative = 1, astar, controller) {
+  const maPosition = bot.entity.position;
+  let nbBlocks = 256;
+  let blocsTrouves = [];
+  if (tentative <= 10) {
+    console.log(`Recherche ${tentative} pour ${nomDuBloc} : nbBlocks = ${nbBlocks}`);
+    // ON UTILISE LE NOM DU BLOC DONNÉ DANS LE CHAT :
+    const targetIds = bot.registry.blocksArray
+      .filter(block => block.name.includes(nomDuBloc.toLowerCase()))
+      .map(block => block.id);
+    blocsTrouves = bot.findBlocks({
+      matching: targetIds,
+      maxDistance: nbBlocks,
+      count: minBlocks
+    });
+
+    // --- 1. SI ON TROUVE LA CIBLE ---
+    if (blocsTrouves.length >= minBlocks) {
+      blocsTrouves.sort((a, b) => maPosition.distanceTo(a) - maPosition.distanceTo(b));
+      const cible = blocsTrouves[0]; 
+      const distance = Math.floor(maPosition.distanceTo(cible));
+      console.log(`Cible la plus proche trouvée à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
+      console.log("Calcul du chemin avec l'IA");
+      const path = astar.findPath(
+          Math.floor(maPosition.x), Math.floor(maPosition.y), Math.floor(maPosition.z),
+          cible.x, cible.y, cible.z
+      );
+      if (path) {
+          console.log("Chemin trouvé !");  
+          const estArrive = await controller.executePath(path);          
+          if (estArrive) {
+              console.log("Arrivé à destination !");
+              // TODO : lui dire de casser la cible (il le fait déjà)
+              // await controller.breakBlocks([cible]);
+          } else {
+              console.log("Bloqué en route, New A*");
+              setTimeout(() => chercherBloc(nomDuBloc, minBlocks, tentative, astar, controller), 1000);
+          }          
+      } else {
+          console.log("L'IA ne trouve aucun chemin sûr pour y aller.");
+          setTimeout(() => goForWood(nomDuBloc, minBlocks, tentative + 1, astar, controller), 500);
+      }
+    } 
+    // --- 2. SI ON NE TROUVE PAS (EXPLORATION) ---
+    else {
+      console.log("Pas assez de blocs ici, j'avance de 256 blocs pour explorer.");    
       
+      let targetX = Math.floor(maPosition.x);
+      const targetY = Math.floor(maPosition.y); 
+      const targetZ = Math.floor(maPosition.z); 
+      for (let i = 0; i < 4; i++) {
+        targetX += 64; 
+        console.log(`Étape ${i+1}/4 : Je marche vers X:${targetX}...`);
+        const posActuelle = bot.entity.position;
+        const path = astar.findPath(
+          Math.floor(posActuelle.x), Math.floor(posActuelle.y), Math.floor(posActuelle.z), //Math.floor super important
+          targetX, targetY, targetZ
+        );
+        if (path) {
+            const reussite = await controller.executePath(path);
+            if (reussite) {
+                console.log(`${(i+1)*64} blocs parcourus !`);
+            } else {
+                console.log("Bloqué pendant l'exploration ! Je m'arrête là pour ce voyage.");
+                break; // Si on se bloque en explorant, on casse la boucle et on relance une recherche depuis la nouvelle position
+            }
+        } 
+        else {
+            console.log("Impossible d'aller plus loin (mur ou zone non chargée). Je m'arrête là.");
+            break; 
+        }
+      }
       // On relance la recherche après l'exploration
       setTimeout(() => goForWood(minBlocks, tentative + 1, astar, controller), 500);
     }
@@ -174,6 +179,39 @@ async function goForWood(minBlocks = 10, tentative = 1, astar, controller) {
 
 const { mineflayer: mineflayerViewer } = require('prismarine-viewer');
 const { Vec3 } = require('vec3');
+
+bot.once('spawn', () => {
+    mineflayerViewer(bot, { port: 3007, firstPerson: true });
+    const watch = new Watch(bot);
+    const movements = new Movements(watch);
+    const astar = new AStar(movements);
+    const controller = new Controller(bot);
+    
+    console.log("Le bot est prêt !");
+    bot.on('chat', (username, message) => {
+        // On ignore les messages du bot lui-même
+        if (username === bot.username) return;
+        // Si le message commence par "cherche "
+        if (message.startsWith('cherche ')) {
+            const nomDuBloc = message.split(' ')[1]; 
+            if (nomDuBloc) {
+                bot.chat(`C'est parti ${username}, je pars à la recherche de : ${nomDuBloc} !`);
+                chercherBloc(nomDuBloc, 1, 1, astar, controller);
+            }
+        }
+        // Stop
+        if (message === 'stop') {
+            bot.chat("J'arrête tout !");
+            bot.clearControlStates();
+        }
+    });
+});
+bot.on('error', (err) => console.log('Erreur du bot :', err));
+bot.on('kicked', (reason) => console.log('Le bot a été kick :', reason));
+
+
+
+/*
 bot.once('spawn', () => {
   mineflayerViewer(bot, { port: 3007, firstPerson: true }); // )if first person is false, you get a bird's-eye view
 
@@ -188,5 +226,4 @@ bot.once('spawn', () => {
     // On ne lance pas la recherche immédiatement, on attend un peu que les chunks chargent
     setTimeout(() => goForWood(10,1,astar,controller), 2000); 
 });
-bot.on('error', (err) => console.log('Erreur du bot :', err));
-bot.on('kicked', (reason) => console.log('Le bot a été kick :', reason));
+*/

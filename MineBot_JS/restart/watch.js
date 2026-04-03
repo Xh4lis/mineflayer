@@ -50,7 +50,7 @@ class Watch {
 
         // Le bloc sous nos pieds doit être cassable
         if (blocAScasser.diggable === true) {
-            const dangers = ['lava', 'water'];
+            const dangers = ['lava', 'water','air'];
             if (!dangers.includes(blocDeReception.name)) {
                 return true;
             }
