@@ -118,7 +118,6 @@ async function goForWood(minBlocks = 10, tentative = 1, astar, controller) {
       console.log(`Cible la plus proche trouvée à ${distance} blocs (X:${cible.x}, Y:${cible.y}, Z:${cible.z}).`);
 
       console.log("Calcul du chemin avec l'IA");
-      // ON UTILISE TON CERVEAU ICI :
       const path = astar.findPath(
           Math.round(maPosition.x), Math.round(maPosition.y), Math.round(maPosition.z),
           cible.x, cible.y, cible.z
@@ -126,11 +125,11 @@ async function goForWood(minBlocks = 10, tentative = 1, astar, controller) {
 
       if (path) {
           console.log("Chemin trouvé !");
-          // ON UTILISE TES MUSCLES ICI :
           await controller.executePath(path);
           console.log("Arrivé à destination !");
       } else {
           console.log("L'IA ne trouve aucun chemin sûr pour y aller.");
+          setTimeout(() => goForWood(minBlocks, tentative + 1, astar, controller), 500);
       }
     } 
     

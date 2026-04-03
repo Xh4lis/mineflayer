@@ -11,7 +11,7 @@ class Controller {
     }
 
     async executePath(path) {
-        if (!path || path.length === 0) return;
+        if (!path || path.length === 0) return false;
 
         // (index 0) la case où le bot se trouve déjà
         for (let i = 1; i < path.length; i++) {
@@ -43,11 +43,12 @@ class Controller {
             }   
             
             // On fait une micro-pause pour éviter que le bot ne glisse ou n'aille trop vite
-            await this.wait(50); 
+            await this.wait(100); 
         }
 
-        // Quand la boucle est finie, on lâche toutes les touches !
+        // Quand la boucle est finie, on lâche toutes les touches
         this.bot.clearControlStates();
+        return true;
     }
 
 
@@ -101,7 +102,7 @@ class Controller {
     }
     async breakBlocks(blocsACasser) {
         //prendre le bon outil si est dans l'inventaire
-        this.equiperMeilleurOutil(this.bot.blockAt(new Vec3(blocsACasser[0].x, blocsACasser[0].y, blocsACasser[0].z))); // On équipe le meilleur outil pour le premier bloc à casser (s'il y en a un)
+        await this.equiperMeilleurOutil(this.bot.blockAt(new Vec3(blocsACasser[0].x, blocsACasser[0].y, blocsACasser[0].z))); // On équipe le meilleur outil pour le premier bloc à casser (s'il y en a un)
         for (const bloc of blocsACasser) {
             const blockToDig = this.bot.blockAt(new Vec3(bloc.x, bloc.y, bloc.z));
             await this.bot.lookAt(blockToDig.position.offset(0.5, 0, 0.5));
