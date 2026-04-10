@@ -1,7 +1,7 @@
 const mineflayer = require('mineflayer');
 const Watch = require('./watch.js');
 const Movements = require('./movements.js');
-const AStar = require('./AStar.js');
+const AStar = require('./AStarHeap.js');
 const Controller = require('./controller.js');
 
 const bot = mineflayer.createBot({

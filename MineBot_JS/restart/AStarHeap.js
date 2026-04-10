@@ -143,4 +143,4 @@ class AStar {
     }
 }
 
-module.exports = { AStar, MinHeap };
+module.exports = AStar;
