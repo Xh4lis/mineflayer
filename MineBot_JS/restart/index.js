@@ -127,7 +127,7 @@ async function chercherBloc(nomDuBloc, minBlocks = 1, tentative = 1, astar, cont
           const estArrive = await controller.executePath(path);          
           if (estArrive) {
               console.log("Arrivé à destination !");
-              // TODO : lui dire de casser la cible (il le fait déjà)
+              // lui dire de casser la cible
               // await controller.breakBlocks([cible]);
           } else {
               console.log("Bloqué en route, New A*");

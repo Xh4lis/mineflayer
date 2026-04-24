@@ -65,7 +65,17 @@ class Movements {
         }
         return false;
     }
-
+    IBridge(x,y,z){ // Is Bridgeable
+        if (this.watch.IsBridgeable(x, y, z)) {
+            this.neighbors.push({ 
+                x: x, y: y, z: z, 
+                cost: deplacement + poserBloc, // Poser un bloc et marcher dessus coûte plus cher que marcher simplement
+                action: 'bridge'
+            });
+            return true;
+        }
+        return false;
+    }
     //================= VOISINS =================
     // Renvoie toutes les cases accessibles depuis un "node" (nœud)
     getNeighbors(node) {
@@ -74,21 +84,25 @@ class Movements {
         if (this.IW(node.x,node.y,node.z-1));
         else if(this.IB(node.x, node.y, node.z-1));
         else if(this.ID(node.x, node.y, node.z-1));
+        else if (this.IBridge(node.x, node.y, node.z-1));
 
         // Sud
         if (this.IW(node.x,node.y,node.z+1));
         else if(this.IB(node.x, node.y, node.z+1));
         else if(this.ID(node.x, node.y, node.z+1));
+        else if (this.IBridge(node.x, node.y, node.z+1));
 
         // Est
         if (this.IW(node.x+1,node.y,node.z));
         else if(this.IB(node.x+1, node.y, node.z));
         else if(this.ID(node.x+1, node.y, node.z));
+        else if (this.IBridge(node.x+1, node.y, node.z));
 
         // Ouest
         if (this.IW(node.x-1,node.y,node.z));
         else if(this.IB(node.x-1, node.y, node.z));
         else if(this.ID(node.x-1, node.y, node.z));
+        else if (this.IBridge(node.x-1, node.y, node.z));
         
         if (this.watch.canTowerUp(node.x, node.y, node.z)) {
             // Coût modéré : sauter et poser un bloc ça demande un petit effort

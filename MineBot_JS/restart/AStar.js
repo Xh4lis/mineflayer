@@ -21,7 +21,6 @@ class AStar {
     }
 
     findPath(startX, startY, startZ, goalX, goalY, goalZ) {
-        // TODO : faire avec une MinHeap pour optimiser la recherche du meilleur noeud
         // Initialiser l'OpenList et le ClosedSet
         const openList = [];
         const closedSet = new Set();

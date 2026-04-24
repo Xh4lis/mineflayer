@@ -46,6 +46,9 @@ class Controller {
             else if (etape.action === 'dig_down') {
                 succes = await this.digDown(cible, etape.toBreak[0]); 
             }
+            else if (etape.action === 'bridge') {
+                succes = await this.bridge(cible); 
+            }
             else {
                 console.log(`Action INCONNUE : ${etape.action}`); // action oubliée dans movements.js
             }
@@ -170,6 +173,35 @@ class Controller {
         return true;
     }
 
+    // TODO : fonction pour bridge
+
+    async bridge(cible) {
+        const positionActuelle = this.bot.entity.position;
+        const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
+        const dx = Math.sign(Math.floor(cible.x) - Math.floor(positionActuelle.x));
+        const dz = Math.sign(Math.floor(cible.z) - Math.floor(positionActuelle.z));
+        const faceCote = new Vec3(dx, 0, dz);
+        await this.equiperBloc();
+        this.bot.setControlState('sneak', true);
+        await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
+        this.bot.setControlState('forward', true);
+        await this.wait(200); // 200ms suffisent pour se bloquer au bord en sneak
+        this.bot.setControlState('forward', false);
+
+        const pointDeVisee = blocSousPieds.position.offset(0.5 + (dx * 0.5), 0.5, 0.5 + (dz * 0.5));
+        await this.bot.lookAt(pointDeVisee, true);
+        
+        try {
+            await this.bot.placeBlock(blocSousPieds, faceCote);
+        } catch (err) {
+            console.log("Impossible de placer le bloc pour le bridge :", err.message);
+            this.bot.setControlState('sneak', false);
+            return false;
+        }
+        this.bot.setControlState('sneak', false);
+        return await this.marcherVers(cible);   
+    }
+
     async breakTower(cible, blocsACasser) {
         await this.breakBlocks(blocsACasser);
         return await this.tower(cible);
@@ -197,7 +229,6 @@ class Controller {
             console.log("Aïe ! Je n'ai plus de blocs de construction dans mon inventaire !");
         }
     }
-    // TODO : améliorer la fonction pour qu'elle choisisse le meilleur outil en fonction du bloc à miner (ex: pelle pour la terre, pioche pour la pierre, hache pour le bois...)
     async equiperMeilleurOutil(blockToDig) {
         let meilleurOutil = null;
         // on calcule le temps de minage avec la main vide (type = null)
@@ -229,7 +260,6 @@ class Controller {
         }
     }
 
-    // TODO : fonction pour bridge
     // TODO : fonction pour faire du parkour (sauter de bloc en bloc)
 }
 

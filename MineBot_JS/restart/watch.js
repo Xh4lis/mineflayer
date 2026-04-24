@@ -38,6 +38,30 @@ class Watch {
         }
         return false;
     }
+    IsBridgeable(x,y,z){ // Is Bridgeable
+        const tete = this.getBlock(x, y+1, z);
+        const pieds = this.getBlock(x, y, z);
+        const sol = this.getBlock(x, y-1, z);
+        if (sol.boundingBox === 'empty' && pieds.boundingBox === 'empty' && tete.boundingBox === 'empty') { // il doit y avoir de la place pour poser un bloc et se tenir dessus
+            return true;
+        }   
+        return false;
+    }
+    IsBridgeableBreak(x,y,z){ // Is Bridgeable en cassant le bloc de devant
+        if (y < -64||y>319) return false; // limites du monde
+        const sol = this.getBlock(x, y-1, z);
+        const pieds = this.getBlock(x, y, z);
+        const tete = this.getBlock(x, y+1, z);
+        const plafond = this.getBlock(x, y+2, z);
+        if (sol.boundingBox === 'empty') { // le bloc en dessous doit être solide
+            if (!["sand","anvil","gravel"].includes(plafond.name)) { // s'il y a un bloc au dessus, il ne doit pas être du sable/gravier/enclume/lave/eau
+                if ((pieds.diggable === true||pieds.boundingBox === 'empty') && (tete.diggable === true||pieds.boundingBox === 'empty') ) { // les blocs à la hauteur du bot doivent être de l'air
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     // Détermine si on peut creuser le bloc exactement sous nos pieds
     canDigDown(x, y, z) {
