@@ -1,5 +1,5 @@
-const casserBloc = 2;
-const deplacement = 1;
+const casserBloc = 1.5;
+const deplacement = 0.5;
 const poserBloc = 1;
 class Movements {
     constructor(watch) {
@@ -11,7 +11,12 @@ class Movements {
 
     IW(x,y,z){ // Is Walkable
         if (this.watch.isWalkable(x, y, z)) {
-            this.neighbors.push({x: x, y: y, z: z, cost: deplacement, action: "walk"});
+            const pieds = this.watch.getBlock(x, y, z);
+            if (pieds && pieds.name === "water"){
+                this.neighbors.push({x: x, y: y, z: z, cost: deplacement*3, action: "swim"});
+            } else{
+                this.neighbors.push({x: x, y: y, z: z, cost: deplacement, action: "walk"});
+            }
             return true;
         }
         return false;
@@ -58,9 +63,28 @@ class Movements {
         if (this.watch.isWalkable(x, y, z)) { // La case d'arrivée en hauteur est libre
             this.neighbors.push({ 
                 x: x, y: y+1, z: z, 
-                cost: deplacement + 0.5, // Un saut coûte un peu plus d'énergie que marcher
+                cost: deplacement ,
                 action: 'jump' 
             });
+            return true;
+        }
+        return false;
+    }
+    IBJ(x, y, z, nodeX, nodeY, nodeZ) {
+        const solArrivee = this.watch.getBlock(x, y - 1, z);
+        if (!solArrivee || solArrivee.name === 'air' || solArrivee.name === 'water' || solArrivee.name === 'lava') {
+            return false;
+        }
+        const blocsACasser = [];
+        const plafondBot = this.watch.getBlock(nodeX, nodeY + 2, nodeZ);
+        const corpsArrivee = this.watch.getBlock(x, y, z);
+        const teteArrivee = this.watch.getBlock(x, y + 1, z);
+        if (plafondBot && plafondBot.name !== 'air') blocsACasser.push({ x: nodeX, y: nodeY + 2, z: nodeZ });
+        if (corpsArrivee && corpsArrivee.name !== 'air') blocsACasser.push({ x: x, y: y, z: z });
+        if (teteArrivee && teteArrivee.name !== 'air') blocsACasser.push({ x: x, y: y + 1, z: z });
+        if (blocsACasser.length > 0) {
+            const coutTotal = (deplacement) + (blocsACasser.length * casserBloc);
+            this.neighbors.push({ x: x, y: y, z: z, cost: coutTotal, action: 'break_and_jump', toBreak: blocsACasser });
             return true;
         }
         return false;
@@ -69,7 +93,7 @@ class Movements {
         if (this.watch.IsBridgeable(x, y, z)) {
             this.neighbors.push({ 
                 x: x, y: y, z: z, 
-                cost: deplacement + poserBloc, // Poser un bloc et marcher dessus coûte plus cher que marcher simplement
+                cost: deplacement + poserBloc,
                 action: 'bridge'
             });
             return true;
@@ -109,12 +133,16 @@ class Movements {
             this.neighbors.push({ x: node.x, y: node.y + 1, z: node.z, cost: deplacement + poserBloc, action: 'tower' });
             // Nord
             if (this.IJF(node.x, node.y + 1, node.z-1));
+            else if (this.IBJ(node.x, node.y + 1, node.z-1, node.x, node.y, node.z));
             // Sud
             if (this.IJF(node.x, node.y + 1, node.z+1));
+            else if (this.IBJ(node.x, node.y + 1, node.z+1, node.x, node.y, node.z));
             // Est
             if (this.IJF(node.x+1, node.y + 1, node.z));
+            else if (this.IBJ(node.x+1, node.y + 1, node.z, node.x, node.y, node.z));
             // Ouest
             if (this.IJF(node.x-1, node.y + 1, node.z));
+            else if (this.IBJ(node.x-1, node.y + 1, node.z, node.x, node.y, node.z));
         }
         else if (this.watch.canBreakAndTowerUp(node.x, node.y, node.z)) {
             // Coût élevé : il faut miner, puis sauter, puis poser le bloc

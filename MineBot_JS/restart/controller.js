@@ -19,6 +19,14 @@ class Controller {
 
         // (index 0) la case où le bot se trouve déjà
         for (let i = 1; i < path.length; i++) {
+            const combat = await this.modeDefense();
+            if (combat){
+                const etapePrecedente = new Vec3(path[i-1].x, path[i-1].y, path[i-1].z);
+                await this.bot.lookAt(etapePrecedente.offset(0.5, 0, 0.5));
+                await this.marcherVers(etapePrecedente);
+            }
+
+
             const etape = path[i];
             const cible = new Vec3(etape.x, etape.y, etape.z);
 
@@ -49,6 +57,12 @@ class Controller {
             else if (etape.action === 'bridge') {
                 succes = await this.bridge(cible); 
             }
+            else if (etape.action === 'swim') {
+                succes = await this.nagerVers(cible);
+            }
+            else if (etape.action === 'break_and_jump') {
+                succes = await this.casserEtSauterVers(cible, etape.toBreak);
+            }
             else {
                 console.log(`Action INCONNUE : ${etape.action}`); // action oubliée dans movements.js
             }
@@ -63,8 +77,31 @@ class Controller {
         this.bot.clearControlStates();
         return true; // <-- C'est une réussite !
     }
-
-
+    async nagerVers(cible) {
+        this.bot.setControlState('forward', true);
+        this.bot.setControlState('jump', true); // On maintient le saut enfoncé pour nager 
+        let tempsEcoule = 0; 
+        while (true) {
+            const botPos = this.bot.entity.position;
+            const distance = Math.sqrt(Math.pow(botPos.x - (cible.x + 0.5), 2) + Math.pow(botPos.z - (cible.z + 0.5), 2));
+            if (distance < 0.3) {
+                this.bot.setControlState('forward', false);
+                this.bot.setControlState('jump', false); // On lâche le saut en arrivant
+                return true;
+            }
+            if (tempsEcoule > 4000) { 
+                this.bot.clearControlStates(); 
+                return false; 
+            }
+            await this.wait(50); 
+            tempsEcoule += 50; 
+        }
+    }
+    async casserEtSauterVers(cible, blocsACasser) {
+        await this.breakBlocks(blocsACasser);
+        await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
+        return await this.sauterVers(cible);
+    }
     async marcherVers(cible) {
         this.bot.setControlState('forward', true);
 
@@ -92,20 +129,21 @@ class Controller {
     async sauterVers(cible) {
         this.bot.setControlState('forward', true);
         this.bot.setControlState('jump', true);
-        await this.wait(100);
-        this.bot.setControlState('jump', false);
 
         let tempsEcoule = 0; // chronomètre
         while (true) {
             const botPos = this.bot.entity.position;
             const distance = Math.sqrt(Math.pow(botPos.x - (cible.x + 0.5), 2) + Math.pow(botPos.z - (cible.z + 0.5), 2));
-
-            if (distance < 0.3 && Math.abs(botPos.y - cible.y) < 0.1) {
+            if (botPos.y >= cible.y) {
+                this.bot.setControlState('jump', false);
+            }
+            if (distance < 0.3 && Math.abs(botPos.y - cible.y) < 0.25) {
                 this.bot.setControlState('forward', false);
                 return true;
             }
             if (tempsEcoule > 2000) {
                 this.bot.setControlState('forward', false);
+                this.bot.setControlState('jump', false);
                 this.bot.clearControlStates(); // On lâche tout
                 return false; // Échec du mouvement
             }
@@ -173,8 +211,6 @@ class Controller {
         return true;
     }
 
-    // TODO : fonction pour bridge
-
     async bridge(cible) {
         const positionActuelle = this.bot.entity.position;
         const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
@@ -210,6 +246,35 @@ class Controller {
         await this.breakBlocks([{ x: blocSousPieds.x, y: blocSousPieds.y, z: blocSousPieds.z }]);
         await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
         return await this.marcherVers(cible);
+    }
+    async modeDefense() {
+        const mechants = ['zombie', 'skeleton', 'creeper', 'spider', 'enderman', 'witch', 'slime','blaze','drowned','husk','stray','vex','vindicator','evoker','pillager']; // Liste des mobs à attaquer (on peut en ajouter ou enlever selon les besoins)
+        let aCombattu = false;
+        // On cherche l'entité la plus proche qui respecte nos critères
+        while (true) {
+            // On cherche la cible la plus proche (dans un rayon de 5 blocs)
+            const cible = this.bot.nearestEntity(entity => {
+                return entity.name && 
+                       mechants.includes(entity.name) && 
+                       this.bot.entity.position.distanceTo(entity.position) < 5; 
+            });
+            // S'il n'y a plus de cible, on sort de la boucle
+            if (!cible) {
+                if (aCombattu) console.log("Zone sécurisée. Reprise de la mission !");
+                return aCombattu; // Renvoie 'true' si on s'est battu, 'false' si c'était déjà calme
+            }
+            if (!aCombattu) {
+                console.log(`Menace détectée (${cible.name}). Arrêt des mouvements et passage en mode Combat.`);
+                this.bot.clearControlStates(); // On lâche toutes les touches de déplacement
+                await this.equiperArme();
+                aCombattu = true;
+            }
+            // On vise et on frappe
+            await this.bot.lookAt(cible.position.offset(0, cible.height / 2, 0), true);
+            this.bot.attack(cible);
+            // Le cooldown de l'arme avant de pouvoir remettre un coup plein pot
+            await this.wait(500);
+        }
     }
 
     async equiperBloc() {
@@ -259,7 +324,31 @@ class Controller {
             } catch (err) {}
         }
     }
+    async equiperArme(){
+        const items = this.bot.inventory.items();
+        let arme  = items.find(item => item.name.includes('sword') );
+        if (!arme){
+            arme = items.find(item => item.name.includes('axe'));
+        }
+        if (!arme){
+            arme = items.find(item => item.name.includes('pickaxe'));
+        }
+        if (arme){
+            try{
+                if(!this.bot.heldItem || this.bot.heldItem.name !== arme.name){
+                    await this.bot.equip(arme, 'hand');
+                }
+            } catch (err){
+                console.log(`Erreur lors de l'équipement de ${arme.name} :`, err.message);
+            }
+        }
+        else{
+            try {
+                await this.bot.unequip('hand');
+            } catch (err) {}
+        }
 
+    }
     // TODO : fonction pour faire du parkour (sauter de bloc en bloc)
 }
 
