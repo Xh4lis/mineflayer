@@ -35,7 +35,7 @@ class Controller {
             
             // Un petit log pour savoir ce que le cerveau a décidé :
             console.log(`- Action demandée : ${etape.action} vers X:${etape.x} Y:${etape.y} Z:${etape.z}`);
-
+            this.bot.chat(`Action : ${etape.action} vers X:${etape.x} Y:${etape.y} Z:${etape.z}`);
             if (etape.action === 'walk' || etape.action === 'drop') {
                 succes = await this.marcherVers(cible);
             } 
@@ -77,6 +77,7 @@ class Controller {
         this.bot.clearControlStates();
         return true; // <-- C'est une réussite !
     }
+    // Fonction pour nager
     async nagerVers(cible) {
         this.bot.setControlState('forward', true);
         this.bot.setControlState('jump', true); // On maintient le saut enfoncé pour nager 
@@ -97,11 +98,13 @@ class Controller {
             tempsEcoule += 50; 
         }
     }
+    // Casse le chemin devant lui pour sauter sur le bloc au dessus
     async casserEtSauterVers(cible, blocsACasser) {
         await this.breakBlocks(blocsACasser);
         await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
         return await this.sauterVers(cible);
     }
+    // Marche vers le bloc devant lui 
     async marcherVers(cible) {
         this.bot.setControlState('forward', true);
 
@@ -125,7 +128,7 @@ class Controller {
             tempsEcoule += 50; // On ajoute 50ms au chronomètre
         }
     }
-
+    // Saute sur le bloc devant lui
     async sauterVers(cible) {
         this.bot.setControlState('forward', true);
         this.bot.setControlState('jump', true);
@@ -139,6 +142,7 @@ class Controller {
             }
             if (distance < 0.3 && Math.abs(botPos.y - cible.y) < 0.25) {
                 this.bot.setControlState('forward', false);
+                this.bot.setControlState('jump', false);
                 return true;
             }
             if (tempsEcoule > 2000) {
@@ -151,6 +155,7 @@ class Controller {
             tempsEcoule += 50; // On ajoute 50ms au chronomètre
         }
     }
+    // Casse les blocs donnés en paramètre
     async breakBlocks(blocsACasser) {
         //prendre le bon outil si est dans l'inventaire
         await this.equiperMeilleurOutil(this.bot.blockAt(new Vec3(blocsACasser[0].x, blocsACasser[0].y, blocsACasser[0].z))); // On équipe le meilleur outil pour le premier bloc à casser (s'il y en a un)
@@ -160,35 +165,13 @@ class Controller {
             await this.bot.dig(blockToDig);
         }
     }
+    // Casse le ou les blocs devant lui puis marche vers la cible
     async casserEtMarcherVers(cible, blocsACasser) {
         await this.breakBlocks(blocsACasser);
         await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
         return await this.marcherVers(cible);
     }
-    // TODO : (optionnel) faire une fonction qui place les blocs mais il faudra enlever dans les autres fonctions qui le font
-    /*
-    async tower(cible) {
-        const positionActuelle = this.bot.entity.position;
-        const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
-        // Le vecteur qui indique le "dessus" du bloc
-        const faceHaut = new Vec3(0, 1, 0);
-        // on regarde vers le bas pour pouvoir poser le bloc
-        await this.bot.lookAt(positionActuelle.offset(0, -2, 0), true);
-        await this.equiperBloc(); // On équipe un bloc de construction avant de faire le tower
-        this.bot.setControlState('jump', true);
-        await this.wait(150);
-        try {
-            await this.bot.placeBlock(blocSousPieds, faceHaut);
-        } catch (err) {
-            // Si on n'a pas de blocs en main ou qu'on a raté le timing, ça va déclencher cette erreur
-            this.bot.setControlState('jump', false);
-            console.log("Impossible de faire le tower :", err.message);
-            return false;
-        }
-        this.bot.setControlState('jump', false);
-        await this.wait(300);
-        return true;
-    }*/
+    // Pose un bloc en dessous de lui pour monter
     async tower(cible) {
         const positionActuelle = this.bot.entity.position;
         const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
@@ -210,7 +193,7 @@ class Controller {
         await this.wait(200); 
         return true;
     }
-
+    // Pose un bloc devant lui pour faire un pont et avancer dessus
     async bridge(cible) {
         const positionActuelle = this.bot.entity.position;
         const blocSousPieds = this.bot.blockAt(positionActuelle.offset(0, -1, 0));
@@ -237,16 +220,18 @@ class Controller {
         this.bot.setControlState('sneak', false);
         return await this.marcherVers(cible);   
     }
-
+    // Creuse au dessus de lui puis pose un bloc en dessous pour monter
     async breakTower(cible, blocsACasser) {
         await this.breakBlocks(blocsACasser);
         return await this.tower(cible);
     }
+    // Pour descendre en creusant sous lui
     async digDown(cible, blocSousPieds) {
         await this.breakBlocks([{ x: blocSousPieds.x, y: blocSousPieds.y, z: blocSousPieds.z }]);
         await this.bot.lookAt(cible.offset(0.5, 0, 0.5));
         return await this.marcherVers(cible);
     }
+    // S'il y a un ennemi à proximité
     async modeDefense() {
         const mechants = ['zombie', 'skeleton', 'creeper', 'spider', 'enderman', 'witch', 'slime','blaze','drowned','husk','stray','vex','vindicator','evoker','pillager']; // Liste des mobs à attaquer (on peut en ajouter ou enlever selon les besoins)
         let aCombattu = false;
@@ -276,7 +261,7 @@ class Controller {
             await this.wait(500);
         }
     }
-
+    // Pour poser un bloc
     async equiperBloc() {
         // Liste de nos blocs préférés pour construire
         const blocsDeConstruction = ['dirt', 'cobblestone', 'stone', 'netherrack'];
@@ -294,6 +279,7 @@ class Controller {
             console.log("Aïe ! Je n'ai plus de blocs de construction dans mon inventaire !");
         }
     }
+    // Pour casser un bloc
     async equiperMeilleurOutil(blockToDig) {
         let meilleurOutil = null;
         // on calcule le temps de minage avec la main vide (type = null)
@@ -324,6 +310,7 @@ class Controller {
             } catch (err) {}
         }
     }
+    // Pour le mode defense
     async equiperArme(){
         const items = this.bot.inventory.items();
         let arme  = items.find(item => item.name.includes('sword') );

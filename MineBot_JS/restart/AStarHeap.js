@@ -2,19 +2,15 @@ class MinHeap {
     constructor() {
         this.heap = [];
     }
-
     get size() { return this.heap.length; }
-
     #parent(i)     { return Math.floor((i - 1) / 2); }
     #leftChild(i)  { return 2 * i + 1; }
     #rightChild(i) { return 2 * i + 2; }
     #swap(i, j)    { [this.heap[i], this.heap[j]] = [this.heap[j], this.heap[i]]; }
-
     insert(node) {
         this.heap.push(node);
         this.#bubbleUp(this.heap.length - 1);
     }
-
     extractMin() {
         if (this.heap.length === 0) return null;
         if (this.heap.length === 1) return this.heap.pop();
@@ -24,12 +20,10 @@ class MinHeap {
         this.#bubbleDown(0);
         return min;
     }
-
     update(node) {
         const i = this.heap.indexOf(node);
         if (i !== -1) this.#bubbleUp(i);
     }
-
     #bubbleUp(i) {
         while (i > 0) {
             const p = this.#parent(i);
@@ -39,7 +33,6 @@ class MinHeap {
             } else break;
         }
     }
-
     #bubbleDown(i) {
         const n = this.heap.length;
         while (true) {
@@ -55,8 +48,6 @@ class MinHeap {
         }
     }
 }
-
-
 class Node {
     constructor(x, y, z, parent = null, g = 0, h = 0) {
         this.x = x;
@@ -68,7 +59,6 @@ class Node {
         this.f = g + h;
     }
 }
-
 class AStar {
     constructor(movements) {
         this.movements = movements;

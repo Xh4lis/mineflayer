@@ -3,11 +3,9 @@ class Watch {
     constructor(bot) {
         this.bot = bot; // On stocke le bot pour pouvoir utiliser ses yeux
     }
-
     getBlock(x, y, z) {
         return this.bot.blockAt(new Vec3(x, y, z));
     }
-
     // Détermine si le bot peut se tenir sur cette case précise
     isWalkable(x, y, z) {
         if (y < -64||y>319) return false; // limites du monde
@@ -40,7 +38,8 @@ class Watch {
         }
         return false;
     }
-    IsBridgeable(x,y,z){ // Is Bridgeable
+    // Détermine si le bloc devant lui est vide pour pouvoir faire un pont
+    IsBridgeable(x,y,z){
         const tete = this.getBlock(x, y+1, z);
         const pieds = this.getBlock(x, y, z);
         const sol = this.getBlock(x, y-1, z);
@@ -49,6 +48,7 @@ class Watch {
         }   
         return false;
     }
+    //
     IsBridgeableBreak(x,y,z){ // Is Bridgeable en cassant le bloc de devant
         if (y < -64||y>319) return false; // limites du monde
         const sol = this.getBlock(x, y-1, z);
@@ -64,7 +64,6 @@ class Watch {
         }
         return false;
     }
-
     // Détermine si on peut creuser le bloc exactement sous nos pieds
     canDigDown(x, y, z) {
         if (y < -63) return false; // On ne creuse pas la Bedrock
@@ -101,7 +100,6 @@ class Watch {
         // Pour sauter sur place, il suffit que le bloc au-dessus de notre tête soit vide
         return espaceTeteSaut.boundingBox === 'empty';
     }
-
     // Détermine si on peut casser le plafond pour ensuite faire un Tower Up
     canBreakAndTowerUp(x, y, z) {
         if (y > 318) return false;
